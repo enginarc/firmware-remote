@@ -1,0 +1,127 @@
+/* ESPNOW Example Header
+
+   This example code is in the Public Domain (or CC0 licensed, at your option.)
+
+   Unless required by applicable law or agreed to in writing, this
+   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+   CONDITIONS OF ANY KIND, either express or implied.
+*/
+
+#ifndef ESPNOW_HELPER_H
+#define ESPNOW_HELPER_H
+
+#include <stdint.h>
+#include <stdbool.h>
+#include "esp_now.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* --------------------------------------------------------------------------
+ * Macro Definitions
+ * -------------------------------------------------------------------------- */
+#define ESPNOW_WIFI_MODE           WIFI_MODE_STA
+#define ESPNOW_WIFI_IF             ESP_IF_WIFI_STA
+#define ESPNOW_QUEUE_SIZE          6
+
+#define IS_BROADCAST_ADDR(addr) (memcmp(addr, s_example_broadcast_mac, ESP_NOW_ETH_ALEN) == 0)
+
+/* --------------------------------------------------------------------------
+ * Enumerations
+ * -------------------------------------------------------------------------- */
+typedef enum {
+    EXAMPLE_ESPNOW_SEND_CB,
+    EXAMPLE_ESPNOW_RECV_CB,
+} example_espnow_event_id_t;
+
+typedef enum {
+    EXAMPLE_ESPNOW_DATA_BROADCAST,
+    EXAMPLE_ESPNOW_DATA_UNICAST,
+    EXAMPLE_ESPNOW_DATA_MAX,
+} example_espnow_data_type_t;
+
+/* --------------------------------------------------------------------------
+ * Structures
+ * -------------------------------------------------------------------------- */
+
+/**
+ * @brief Structure of ESPNOW send callback event
+ */
+typedef struct {
+    uint8_t mac_addr[ESP_NOW_ETH_ALEN];
+    esp_now_send_status_t status;
+} example_espnow_event_send_cb_t;
+
+/**
+ * @brief Structure of ESPNOW receive callback event
+ */
+typedef struct {
+    uint8_t mac_addr[ESP_NOW_ETH_ALEN];
+    uint8_t *data;
+    int data_len;
+} example_espnow_event_recv_cb_t;
+
+/**
+ * @brief Union of ESPNOW callback event information
+ */
+typedef union {
+    example_espnow_event_send_cb_t send_cb;
+    example_espnow_event_recv_cb_t recv_cb;
+} example_espnow_event_info_t;
+
+/**
+ * @brief Structure of ESPNOW event pushed to queue
+ */
+typedef struct {
+    example_espnow_event_id_t id;
+    example_espnow_event_info_t info;
+} example_espnow_event_t;
+
+/**
+ * @brief Structure of ESPNOW data packet used in the application layer
+ */
+/* Note: Packed attribute ensures structure size remains consistent across devices */
+typedef struct {
+    uint8_t type;                         // Broadcast or Unicast
+    uint8_t state;                        // Current device state
+    uint16_t seq_num;                     // Sequence number
+    uint16_t crc;                         // CRC16 checksum
+    uint32_t magic;                       // Magic number for master/slave arbitration
+    uint8_t payload[0];                   // Real data starts here
+} __attribute__((packed)) example_espnow_data_t;
+
+/**
+ * @brief Parameters used for sending ESPNOW data
+ */
+typedef struct {
+    bool unicast;                         // Send unicast or not
+    bool broadcast;                       // Send broadcast or not
+    uint8_t state;                        // Current device state
+    uint32_t magic;                       // Local magic number
+    uint16_t count;                       // Total number of packets to send
+    uint16_t delay;                       // Delay between packets
+    int len;                              // Length of packet
+    uint8_t *buffer;                      // Send buffer
+    uint8_t dest_mac[ESP_NOW_ETH_ALEN];   // Destination MAC address
+} example_espnow_send_param_t;
+
+/* --------------------------------------------------------------------------
+ * Public Function Prototypes
+ * -------------------------------------------------------------------------- */
+
+/**
+ * @brief Prepare the ESP-NOW data packet (calculates CRC and fills payload)
+ */
+void example_espnow_data_prepare(example_espnow_send_param_t *send_param);
+
+/**
+ * @brief Parse the received ESP-NOW data packet
+ */
+int example_espnow_data_parse(uint8_t *data, uint16_t data_len, uint8_t *state, uint16_t *seq, uint32_t *magic);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* ESPNOW_HELPER_H */
