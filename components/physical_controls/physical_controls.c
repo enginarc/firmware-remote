@@ -2,15 +2,15 @@
 #include "esp_adc/adc_oneshot.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "driver/pulse_cnt.h"
-#include "physical_controls.h"
 #include "driver/i2c.h"
-#include "esp_log.h"
 
 static const char *TAG = "PHYS_CTRL";
 static int8_t last_encoder_state = 0;
 static adc_oneshot_unit_handle_t adc1_handle;
-static pcnt_unit_handle_t pcnt_unit = NULL;
+
+static pcnt_unit_handle_t g_pcnt_unit = NULL; // Renamed to avoid shadowing
 
 /**
  * Initializes ADC1 for Joystick and Battery Sensing 
@@ -40,8 +40,8 @@ esp_err_t adc_inputs_init(void) {
     ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_4, &config));
     
     // Register Battery Sense using board_config.h address
-    // GPIO 6 maps to ADC_CHANNEL_5
-    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_5, &config));
+    // GPIO 3 maps to ADC_CHANNEL_2
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_2, &config));
 
     ESP_LOGI(TAG, "ADC initialized for PIN_JOYSTICK_X, PIN_JOYSTICK_Y, and PIN_BATTERY_SENSE");
     return ESP_OK;
@@ -53,13 +53,16 @@ esp_err_t adc_inputs_init(void) {
 esp_err_t physical_controls_read_analog(int *joy_x, int *joy_y, float *v_batt) {
     int raw_x, raw_y, raw_batt;
 
-    // Read values using the mapped channels
-    ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, ADC_CHANNEL_3, &raw_x));
-    ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, ADC_CHANNEL_4, &raw_y));
-    ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, ADC_CHANNEL_5, &raw_batt));
+    ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, ADC_CHANNEL_2, &raw_batt));
 
-    *joy_x = raw_x;
-    *joy_y = raw_y;
+    if (joy_x && joy_y) {
+        // Read values using the mapped channels
+        ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, ADC_CHANNEL_3, &raw_x));
+        ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, ADC_CHANNEL_4, &raw_y));
+
+        *joy_x = raw_x;
+        *joy_y = raw_y;
+    }
 
     // Battery Voltage Calculation:
     // With your 100k/100k divider, the voltage at the pin is exactly half.
@@ -75,8 +78,7 @@ esp_err_t z_axis_encoder_init(void) {
         .high_limit = 32767,
         .low_limit = -32768,
     };
-    pcnt_unit_handle_t pcnt_unit = NULL;
-    ESP_ERROR_CHECK(pcnt_new_unit(&unit_config, &pcnt_unit));
+    ESP_ERROR_CHECK(pcnt_new_unit(&unit_config, &g_pcnt_unit));
 
     // 2. Configure the PCNT channel
     pcnt_chan_config_t chan_config = {
@@ -84,7 +86,7 @@ esp_err_t z_axis_encoder_init(void) {
         .level_gpio_num = PIN_E6B2_PHB,
     };
     pcnt_channel_handle_t pcnt_chan = NULL;
-    ESP_ERROR_CHECK(pcnt_new_channel(pcnt_unit, &chan_config, &pcnt_chan));
+    ESP_ERROR_CHECK(pcnt_new_channel(g_pcnt_unit, &chan_config, &pcnt_chan));
 
     // 3. Set actions on edges and levels (Corrected constants for v5.x)
     // On rising edge of PHA: Increase count
@@ -104,20 +106,19 @@ esp_err_t z_axis_encoder_init(void) {
     pcnt_glitch_filter_config_t filter_config = {
         .max_glitch_ns = 1000, 
     };
-    ESP_ERROR_CHECK(pcnt_unit_set_glitch_filter(pcnt_unit, &filter_config));
+    ESP_ERROR_CHECK(pcnt_unit_set_glitch_filter(g_pcnt_unit, &filter_config));
 
     // 5. Start the counter
-    ESP_ERROR_CHECK(pcnt_unit_enable(pcnt_unit));
-    ESP_ERROR_CHECK(pcnt_unit_clear_count(pcnt_unit));
-    ESP_ERROR_CHECK(pcnt_unit_start(pcnt_unit));
+    ESP_ERROR_CHECK(pcnt_unit_enable(g_pcnt_unit));
+    ESP_ERROR_CHECK(pcnt_unit_clear_count(g_pcnt_unit));
+    ESP_ERROR_CHECK(pcnt_unit_start(g_pcnt_unit));
 
     return ESP_OK;
 }
 
 esp_err_t z_axis_get_value(int *value) {
-    return pcnt_unit_get_count(pcnt_unit, value);
+    return pcnt_unit_get_count(g_pcnt_unit, value);
 }
-
 
 
 
@@ -184,6 +185,10 @@ esp_err_t physical_controls_read_all(remote_controls_state_t *state) {
     esp_err_t ret = mcp_read_ports(&regA, &regB);
     if (ret != ESP_OK) return ret;
 
+    // Direct ESP32-S3 Pin for Joystick Switch (GPIO 3)
+    // No I2C overhead, instant response. Read this early for input detection.
+    state->joy_sw_pressed = (gpio_get_level(PIN_JOYSTICK_SW) == 0);
+
     // Logic: Bitwise AND with pin mask, then invert (!) because pull-up = HIGH when idle
     state->pairing_pressed   = !(regA & (1 << MCP_PIN_PAIRING));
     state->shutter_pressed   = !(regA & (1 << MCP_PIN_SHUTTER));
@@ -191,31 +196,38 @@ esp_err_t physical_controls_read_all(remote_controls_state_t *state) {
     state->fine_toggle_active = !(regA & (1 << MCP_PIN_FINE_TOGGLE)); 
     state->reset_pos_pressed = !(regA & (1 << MCP_PIN_RESET_POS));
     state->objective_click   = !(regA & (1 << MCP_PIN_EC11_SW));
-    
+
+    // Check if Joystick is moved beyond deadzone (using 100 range from mapped values)
+    int cur_x, cur_y;
+    get_mapped_joystick(&cur_x, &cur_y);
+    bool joystick_active = (abs(cur_x) > 10 || abs(cur_y) > 10);
+
     // Read from Port B
     state->save_pos_pressed  = !(regB & (1 << MCP_PIN_SAVE_POS));
 
-// Direct ESP32-S3 Pin for Joystick Switch (GPIO 3)
-    // No I2C overhead, instant response
-    state->lock_panel_active = (gpio_get_level(MCP_PIN_LOCK_PANEL_TOGGLE) == 0);
-
-    /* --- EC11 Objective Encoder Logic --- */
+ /* --- EC11 Objective Encoder Logic --- */
     uint8_t current_enc = (regA & 0x03); // PHA and PHB are bits 0 and 1
+    state->encoder_diff = 0; // Default to no movement
+
     if (current_enc != last_encoder_state) {
         // Clockwise: 00 -> 01 or 11 -> 10
         if ((last_encoder_state == 0 && current_enc == 1) || (last_encoder_state == 3 && current_enc == 2)) {
-            state->objective_encoder_diff = 1;
+            state->encoder_diff = 1;
         } 
         // Counter-Clockwise: 00 -> 10 or 11 -> 01
         else if ((last_encoder_state == 0 && current_enc == 2) || (last_encoder_state == 3 && current_enc == 1)) {
-            state->objective_encoder_diff = -1;
-        } else {
-            state->objective_encoder_diff = 0;
+            state->encoder_diff = -1;
         }
         last_encoder_state = current_enc;
-    } else {
-        state->objective_encoder_diff = 0;
     }
+
+    // --- Logic for Input Detection (to clear display messages) ---
+    // Check if any digital button is pressed or encoder moved.
+    // Mask out 0x03 (Encoder A/B) from regA because they hold state and aren't momentary buttons.
+    bool button_active = ((regA & ~0x03) != (0xFF & ~0x03)) || (regB != 0xFF) || (state->joy_sw_pressed);
+
+    // Combine with encoder movement
+    state->any_input_detected = (button_active || joystick_active || state->encoder_diff != 0);
 
     return ESP_OK;
 }

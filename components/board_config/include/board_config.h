@@ -18,8 +18,7 @@
 #define PIN_E6B2_PHA          GPIO_NUM_1   // Z-Axis Industrial Encoder
 #define PIN_E6B2_PHB          GPIO_NUM_2
 
-/* --- HIGH-SPEED PERIPHERALS (Direct to ESP32-S3) --- */
-// ... (SPI and Encoder defines) ...
+// --- HIGH-SPEED PERIPHERALS (Direct to ESP32-S3) (SPI and Encoder defines) ...
 
 #define PIN_JOYSTICK_X        GPIO_NUM_4
 #define PIN_JOYSTICK_Y        GPIO_NUM_5

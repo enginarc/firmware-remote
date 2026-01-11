@@ -10,10 +10,12 @@ typedef struct {
     bool shutter_pressed;
     bool lock_panel_active;
     bool fine_toggle_active;
+    bool joy_sw_pressed;
     bool reset_pos_pressed;
     bool save_pos_pressed;
-    int8_t objective_encoder_diff; // +1, -1, or 0
+    int encoder_diff;        // Renamed from objective_encoder_diff
     bool objective_click;
+    bool any_input_detected; // New member to handle display wake/clear
 } remote_controls_state_t;
 
 esp_err_t physical_controls_init(void);
