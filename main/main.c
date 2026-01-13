@@ -13,6 +13,7 @@
 #include "display.h"
 #include "store.h"
 #include "lvgl.h"
+#include "esp_sleep.h"
 
 static const char *TAG = "REMOTE_MAIN";
 
@@ -146,6 +147,32 @@ void app_main(void) {
                 // Visual feedback for the user (optional)
                 // ui_show_capture_animation(); 
             }
+
+            // --- DEEP SLEEP LOGIC ---
+            if (controls.sleep_button_pressed) {
+                ESP_LOGI(TAG, "Sleep button pressed. Entering Deep Sleep...");
+                
+                // Show a brief message before shutting down
+                display_show_message("POWER", "Shutting down...", MSG_TYPE_INFO);
+                vTaskDelay(pdMS_TO_TICKS(1000));
+
+                // Configure GPIO 0 to wake the device when pressed (pulled Low)
+                esp_sleep_enable_ext0_wakeup(PIN_SLEEP_WAKE_BTN, 0); //
+                esp_deep_sleep_start();
+            }
+
+            // --- SAVE POSITION LOGIC (TTP223) ---
+            if (controls.save_pos_pressed) {
+                display_show_message("SAVE", "Position Stored!", MSG_TYPE_INFO);
+                // Send Save Command via ESP-NOW
+                cJSON *root = cJSON_CreateObject();
+                cJSON_AddStringToObject(root, "cmd", "save_pos");
+                char *payload = cJSON_PrintUnformatted(root);
+                wireless_send_json(payload);
+                free(payload);
+                cJSON_Delete(root);
+            }
+
             // Logic: If any button is pressed or encoder moves, clear message
             if (controls.any_input_detected) { 
                 display_clear_message();

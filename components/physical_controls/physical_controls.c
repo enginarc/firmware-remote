@@ -177,6 +177,14 @@ esp_err_t physical_controls_init(void) {
     };
     gpio_config(&io_conf);
 
+// 2. Initialize the Sleep/Wake button (GPIO 0)
+    gpio_config_t sleep_btn_conf = {
+        .pin_bit_mask = (1ULL << PIN_SLEEP_WAKE_BTN),
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = 1, // Assumes button shorts to GND
+    };
+    gpio_config(&sleep_btn_conf);
+
     return ESP_OK;
 }
 
@@ -188,6 +196,7 @@ esp_err_t physical_controls_read_all(remote_controls_state_t *state) {
     // Direct ESP32-S3 Pin for Joystick Switch (GPIO 3)
     // No I2C overhead, instant response. Read this early for input detection.
     state->joy_sw_pressed = (gpio_get_level(PIN_JOYSTICK_SW) == 0);
+    state->sleep_button_pressed = (gpio_get_level(PIN_SLEEP_WAKE_BTN) == 0); //
 
     // Logic: Bitwise AND with pin mask, then invert (!) because pull-up = HIGH when idle
     state->pairing_pressed   = !(regA & (1 << MCP_PIN_PAIRING));
@@ -197,14 +206,15 @@ esp_err_t physical_controls_read_all(remote_controls_state_t *state) {
     state->reset_pos_pressed = !(regA & (1 << MCP_PIN_RESET_POS));
     state->objective_click   = !(regA & (1 << MCP_PIN_EC11_SW));
 
+    // Map TTP223 on Port B Bit 0 to Save Position
+    state->save_pos_pressed = !(regB & (1 << MCP_PIN_TTP223_SAVE));
+
     // Check if Joystick is moved beyond deadzone (using 100 range from mapped values)
     int cur_x, cur_y;
     get_mapped_joystick(&cur_x, &cur_y);
     bool joystick_active = (abs(cur_x) > 10 || abs(cur_y) > 10);
 
-    // Read from Port B
-    state->save_pos_pressed  = !(regB & (1 << MCP_PIN_SAVE_POS));
-
+    
  /* --- EC11 Objective Encoder Logic --- */
     uint8_t current_enc = (regA & 0x03); // PHA and PHB are bits 0 and 1
     state->encoder_diff = 0; // Default to no movement

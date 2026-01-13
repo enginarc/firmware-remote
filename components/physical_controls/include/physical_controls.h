@@ -12,7 +12,8 @@ typedef struct {
     bool fine_toggle_active;
     bool joy_sw_pressed;
     bool reset_pos_pressed;
-    bool save_pos_pressed;
+    bool save_pos_pressed;   // Triggered by TTP223 on MCP GPB0
+    bool sleep_button_pressed; // Triggered by physical button on GPIO 0
     int encoder_diff;        // Renamed from objective_encoder_diff
     bool objective_click;
     bool any_input_detected; // New member to handle display wake/clear

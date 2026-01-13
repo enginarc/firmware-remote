@@ -4,7 +4,6 @@
 #include <driver/gpio.h>
 
 /* --- POWER & SYSTEM --- */
-#define PIN_TTP223_WAKEUP     GPIO_NUM_0   // Touch button for Deep Sleep wake
 #define PIN_BATTERY_SENSE     GPIO_NUM_3   // Analog input for battery voltage divider
 
 /* --- HIGH-SPEED PERIPHERALS (Direct to ESP32-S3) --- */
@@ -49,7 +48,9 @@
 #define MCP_PIN_RESET_POS     7  
 
 // Port B (Bitwise 0-7, though globally bit 8)
-#define MCP_PIN_SAVE_POS      0  // This is Pin 8 globally, but Bit 0 on Port B
+//#define MCP_PIN_SAVE_POS      0  // This is Pin 8 globally, but Bit 0 on Port B
+#define MCP_PIN_TTP223_SAVE   0  // TTP223 Touch button for Saving Position
+#define PIN_SLEEP_WAKE_BTN    GPIO_NUM_0   // Physical button for Deep Sleep toggle
 
 /* --- ESP-NOW CONFIGURATION --- */
 #define REMOTE_DEVICE_ROLE    "REMOTE_PANEL"
