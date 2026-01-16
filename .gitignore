@@ -13,3 +13,6 @@
 __pycache__/
 hardware/pcb/~pcb.kicad_sch.lck
 hardware/pcb/pcb-backups/
+*-cache
+*-backups
+*.lck
