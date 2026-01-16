@@ -1,6 +1,6 @@
 {
   "board": {
-    "active_layer": 2,
+    "active_layer": 5,
     "active_layer_preset": "",
     "auto_track_width": true,
     "hidden_netclasses": [],
@@ -59,7 +59,7 @@
     "ssh_key": ""
   },
   "meta": {
-    "filename": "pcb.kicad_prl",
+    "filename": "RegulatedPowerSupply3.3V5V.kicad_prl",
     "version": 5
   },
   "net_inspector_panel": {
@@ -97,7 +97,7 @@
       103,
       74,
       103,
-      103
+      44
     ],
     "custom_group_rules": [],
     "expanded_rows": [],
