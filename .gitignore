@@ -16,3 +16,4 @@ hardware/pcb/pcb-backups/
 *-cache
 *-backups
 *.lck
+_autosave*
