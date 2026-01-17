@@ -50,7 +50,7 @@ char* create_payload(remote_controls_state_t *state, int z_val, int joy_x, int j
     cJSON_AddNumberToObject(root, "z", z_val);
     
     // Status Flags
-    cJSON_AddBoolToObject(root, "fine", state->fine_toggle_active);
+    cJSON_AddBoolToObject(root, "fine", state->joy_sw_pressed);
     cJSON_AddBoolToObject(root, "shutter", state->shutter_pressed);
     cJSON_AddNumberToObject(root, "obj_diff", state->encoder_diff);
     cJSON_AddBoolToObject(root, "save", state->save_pos_pressed);

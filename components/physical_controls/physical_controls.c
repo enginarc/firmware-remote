@@ -167,15 +167,15 @@ esp_err_t physical_controls_init(void) {
 
     ESP_LOGI(TAG, "MCP23017 expansion I/O initialized successfully");
 
-    // Initialize the direct Joystick Switch pin
-    gpio_config_t io_conf = {
-        .intr_type = GPIO_INTR_DISABLE,
-        .mode = GPIO_MODE_INPUT,
-        .pin_bit_mask = (1ULL << PIN_JOYSTICK_SW),
-        .pull_down_en = 0,
-        .pull_up_en = 1, // Enable internal pull-up
-    };
-    gpio_config(&io_conf);
+    // // Initialize the direct Joystick Switch pin
+    // gpio_config_t io_conf = {
+    //     .intr_type = GPIO_INTR_DISABLE,
+    //     .mode = GPIO_MODE_INPUT,
+    //     .pin_bit_mask = (1ULL << PIN_JOYSTICK_SW),
+    //     .pull_down_en = 0,
+    //     .pull_up_en = 1, // Enable internal pull-up
+    // };
+    // gpio_config(&io_conf);
 
 // 2. Initialize the Sleep/Wake button (GPIO 0)
     gpio_config_t sleep_btn_conf = {
@@ -195,14 +195,14 @@ esp_err_t physical_controls_read_all(remote_controls_state_t *state) {
 
     // Direct ESP32-S3 Pin for Joystick Switch (GPIO 3)
     // No I2C overhead, instant response. Read this early for input detection.
-    state->joy_sw_pressed = (gpio_get_level(PIN_JOYSTICK_SW) == 0);
+    //state->joy_sw_pressed = (gpio_get_level(MCP_JOYSTICK_SW) == 0);
     state->sleep_button_pressed = (gpio_get_level(PIN_SLEEP_WAKE_BTN) == 0); //
 
     // Logic: Bitwise AND with pin mask, then invert (!) because pull-up = HIGH when idle
     state->pairing_pressed   = !(regA & (1 << MCP_PIN_PAIRING));
     state->shutter_pressed   = !(regA & (1 << MCP_PIN_SHUTTER));
     state->lock_panel_active = !(regA & (1 << MCP_PIN_LOCK_PANEL_TOGGLE)); //EA: Moved to ESP32-S3
-    state->fine_toggle_active = !(regA & (1 << MCP_PIN_FINE_TOGGLE)); 
+    state->joy_sw_pressed = !(regA & (1 << MCP_PIN_JOY_SW)); 
     state->reset_pos_pressed = !(regA & (1 << MCP_PIN_RESET_POS));
     state->objective_click   = !(regA & (1 << MCP_PIN_EC11_SW));
 

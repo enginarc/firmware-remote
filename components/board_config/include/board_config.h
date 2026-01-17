@@ -14,14 +14,17 @@
 #define PIN_LCD_RST           GPIO_NUM_14
 #define PIN_LCD_BL            GPIO_NUM_21  //Backlight PWM (Optional - Not currently connected)
 
-#define PIN_E6B2_PHA          GPIO_NUM_1   // Z-Axis Industrial Encoder
-#define PIN_E6B2_PHB          GPIO_NUM_2
+#define PIN_E6B2_PHA          GPIO_NUM_4   // Z-Axis Industrial Encoder
+#define PIN_E6B2_PHB          GPIO_NUM_5
+#define PIN_E6B2_PHZ          GPIO_NUM_6
 
 // --- HIGH-SPEED PERIPHERALS (Direct to ESP32-S3) (SPI and Encoder defines) ...
 
-#define PIN_JOYSTICK_X        GPIO_NUM_4
-#define PIN_JOYSTICK_Y        GPIO_NUM_5
-#define PIN_JOYSTICK_SW       GPIO_NUM_6   // Moved from MCP23017 to Direct GPIO
+#define PIN_JOYSTICK_X        GPIO_NUM_1
+#define PIN_JOYSTICK_Y        GPIO_NUM_2
+
+//EA: TO BE MOVED TO MCP23017 GPA 0
+//#define PIN_JOYSTICK_SW       GPIO_NUM_6   // Moved from MCP23017 to Direct GPIO
 
 #define PIN_I2C_SDA           GPIO_NUM_8
 #define PIN_I2C_SCL           GPIO_NUM_9
@@ -38,13 +41,13 @@
 
 /* --- I/O EXPANDER MAPPING --- */
 // Port A (Bitwise 0-7)
-#define MCP_PIN_EC11_PHA      0  
-#define MCP_PIN_EC11_PHB      1  
+#define MCP_PIN_EC11_PHA      1  
+#define MCP_PIN_EC11_PHB      0  
 #define MCP_PIN_EC11_SW       2  
 #define MCP_PIN_PAIRING       3  
 #define MCP_PIN_SHUTTER       4  
 #define MCP_PIN_LOCK_PANEL_TOGGLE    5  
-#define MCP_PIN_FINE_TOGGLE   6  
+#define MCP_PIN_JOY_SW   6  
 #define MCP_PIN_RESET_POS     7  
 
 // Port B (Bitwise 0-7, though globally bit 8)

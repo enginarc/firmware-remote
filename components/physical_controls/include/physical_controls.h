@@ -9,7 +9,7 @@ typedef struct {
     bool pairing_pressed;
     bool shutter_pressed;
     bool lock_panel_active;
-    bool fine_toggle_active;
+    //bool fine_toggle_active;
     bool joy_sw_pressed;
     bool reset_pos_pressed;
     bool save_pos_pressed;   // Triggered by TTP223 on MCP GPB0
